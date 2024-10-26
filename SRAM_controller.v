@@ -15,7 +15,7 @@ module SRAM_Controller(
 
     //control Pins
     output wire[20:0] o_sram_address,
-    output wire[15:0] io_sram_in_out,  //  register that interacts with the OUTIN port of the IC
+    output reg[15:0] io_sram_in_out,  //  register that interacts with the OUTIN port of the IC
     output wire o_CS,
     output wire o_OE,
     output wire o_WE,
@@ -24,8 +24,6 @@ module SRAM_Controller(
 );
 
 integer i;
-
-reg[15:0] r_in_data;
 
 reg r_data_valid;
 reg r_wr_done;
@@ -36,10 +34,8 @@ reg r_UB;
 reg r_LB;
 reg r_busy;
 
-reg[15:0] r_write_data; 
 reg[15:0] r_write_buffer; // buffer to store data before writing
 
-reg[15:0] r_io_sram_in_out;
 reg[20:0] r_sram_address;
 reg[15:0] r_sram_in;
 reg[20:0] r_read_address; // a buffer for read address
@@ -60,7 +56,6 @@ assign o_UB             = r_UB;
 assign o_LB             = r_LB;
 
 assign o_sram_address   = r_sram_address;
-assign io_sram_in_out   = r_io_sram_in_out;
 assign o_data           = r_sram_in;
 
 
@@ -85,7 +80,6 @@ always @(posedge i_clk or negedge reset) begin
         r_write_control_time <=0;
         r_data_valid         <=0;
         r_busy               <=0;
-        r_write_data         <= 0;
         SRAM_STATE <= initial_state;
     end else begin
         r_data_valid <= 0;
@@ -103,11 +97,9 @@ always @(posedge i_clk or negedge reset) begin
         end
         read_write_state : begin
             if (i_rd_strt) begin
-                r_in_data <= r_io_sram_in_out;  // assigns io_sram_in_out to read mode
                 SRAM_STATE <= read_state;
             end
             else if(i_wr_strt)begin
-                r_io_sram_in_out <= r_write_data;   // assigns io_sram_in_out to write mode
                 SRAM_STATE <= write_state;
             end
             else begin
@@ -137,7 +129,7 @@ always @(posedge i_clk or negedge reset) begin
             end
         end
         start_read : begin
-            r_sram_in <= r_in_data ;
+            r_sram_in <= io_sram_in_out; // reading from IC
             SRAM_STATE <= out_hold; // adopted next state bcz the output hold time should be min 2.5ns
         end
         out_hold : begin
@@ -184,7 +176,7 @@ always @(posedge i_clk or negedge reset) begin
             SRAM_STATE <= write_start;
         end
         write_start : begin
-            r_write_data <= r_write_buffer; // writing to memory
+            io_sram_in_out <= r_write_buffer; // writing to memory
             r_wr_done <= 1;
             SRAM_STATE <= write_stop;
         end
